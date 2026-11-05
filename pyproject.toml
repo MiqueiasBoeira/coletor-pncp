@@ -1,0 +1,25 @@
+[project]
+name = "project-1"
+version = "0.1.0"
+description = "Monitor de licitações do PNCP: filtra contratações por palavra-chave e exporta para Excel ou Google Sheets."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dotenv>=0.9.9",
+    "fastapi[standard]>=0.143.2",
+    "gspread>=6.2.1",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.6",
+    "pytest>=9.1.1",
+    "python-dotenv>=1.2.4",
+    "requests>=2.34.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.18,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.1",
+]
