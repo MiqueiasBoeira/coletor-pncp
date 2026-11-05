@@ -108,7 +108,12 @@ def test_grava_cabecalhos_e_valores(
     aba = cliente.planilha.sheet1
     assert cliente.chave == "planilha-xyz"
     assert aba.limpou
-    assert aba.valores[0] == list(COLUNAS_EXPORTACAO.values())
+    cabecalhos_esperados = [
+        COLUNAS_EXPORTACAO[nome]
+        for nome in COLUNAS_EXPORTACAO
+        if nome in licitacoes[0]
+    ]
+    assert aba.valores[0] == cabecalhos_esperados
     assert len(aba.valores) == len(licitacoes) + 1
     assert aba.valores[1][0] == licitacoes[0]["numero_controle_pncp"]
     assert aba.valores[1][6] == licitacoes[0]["valor_estimado"]

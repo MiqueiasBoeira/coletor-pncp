@@ -8,9 +8,10 @@ from typing import Any
 from dotenv import load_dotenv
 
 from busca_api_pncp import ErroConsultaPNCP, buscar_registros_pncp
+from classificador import ErroClassificacao
 from exportacao import ErroExportacao, exportar_para_excel
 from manipular_google_sheets import ErroGoogleSheets, exporta_grava_licitacoes_sheets
-from processa_licitacoes import filtrar_e_validar
+from pipeline import CACHE_CLASSIFICACAO, processar_registros
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +53,17 @@ def executar(
     caminho_excel: str | Path,
     *,
     gravar_sheets: bool = False,
+    classificar: bool = False,
+    cliente_classificador: Any | None = None,
+    caminho_cache: Path | None = CACHE_CLASSIFICACAO,
 ) -> tuple[list[dict], list[dict]]:
-    validadas, erros = filtrar_e_validar(licitacoes, palavras_chave)
-    logger.info("Validadas: %d, descartadas: %d", len(validadas), len(erros))
+    validadas, erros, _contagem = processar_registros(
+        licitacoes,
+        palavras_chave,
+        classificar=classificar,
+        cliente_classificador=cliente_classificador,
+        caminho_cache=caminho_cache if classificar else None,
+    )
     exportar_para_excel(validadas, caminho_excel)
     if gravar_sheets:
         exporta_grava_licitacoes_sheets(validadas)
@@ -98,6 +107,11 @@ def construir_argumentos(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Também grava na planilha Google configurada no .env",
     )
+    parser.add_argument(
+        "--classificar",
+        action="store_true",
+        help="Classifica cada objeto com a Anthropic (ANTHROPIC_API_KEY no .env).",
+    )
     return parser.parse_args(argv)
 
 
@@ -115,8 +129,13 @@ def main(argv: list[str] | None = None) -> int:
             argumentos.palavras,
             argumentos.saida,
             gravar_sheets=argumentos.sheets,
+            classificar=argumentos.classificar,
         )
-    except (ErroLeituraArquivoLicitacoesJSON, ErroConsultaPNCP) as erro:
+    except (
+        ErroLeituraArquivoLicitacoesJSON,
+        ErroConsultaPNCP,
+        ErroClassificacao,
+    ) as erro:
         logger.error("%s", erro)
         return 1
     except (ErroExportacao, ErroGoogleSheets) as erro:

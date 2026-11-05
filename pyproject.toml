@@ -5,6 +5,7 @@ description = "Monitor de licitações do PNCP: filtra contratações por palavr
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=2.5.0",
     "dotenv>=0.9.9",
     "fastapi[standard]>=0.143.2",
     "gspread>=6.2.1",
@@ -21,5 +22,9 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "ruff>=0.17.1",
 ]
+
+[tool.ruff.lint]
+ignore = ["B008"]

@@ -21,17 +21,35 @@ COLUNAS_EXPORTACAO: dict[str, str] = {
     "valor_estimado": "Valor estimado",
     "data_publicacao_pncp": "Data de publicação no PNCP",
     "link_pncp": "Link do PNCP",
+    "relevancia": "Relevância",
+    "categoria": "Categoria",
+    "resumo_ia": "Resumo",
+    "justificativa": "Justificativa",
 }
 
 
-def preparar_dataframe(licitacoes: list[dict[str, Any]]) -> pd.DataFrame:
+def _colunas_presentes(licitacoes: list[dict[str, Any]]) -> list[str]:
     if not licitacoes:
-        df = pd.DataFrame(columns=list(COLUNAS_EXPORTACAO))
+        return [nome for nome in COLUNAS_EXPORTACAO if nome not in {
+            "relevancia",
+            "categoria",
+            "resumo_ia",
+            "justificativa",
+        }]
+    chaves = set(licitacoes[0])
+    return [nome for nome in COLUNAS_EXPORTACAO if nome in chaves]
+
+
+def preparar_dataframe(licitacoes: list[dict[str, Any]]) -> pd.DataFrame:
+    colunas = _colunas_presentes(licitacoes)
+    if not licitacoes:
+        df = pd.DataFrame(columns=colunas)
     else:
         df = pd.DataFrame(licitacoes)
-        df = df[list(COLUNAS_EXPORTACAO)]
-    df["data_publicacao_pncp"] = pd.to_datetime(df["data_publicacao_pncp"]).dt.date
-    df = df.rename(columns=COLUNAS_EXPORTACAO)
+        df = df[colunas]
+    if "data_publicacao_pncp" in df.columns:
+        df["data_publicacao_pncp"] = pd.to_datetime(df["data_publicacao_pncp"]).dt.date
+    df = df.rename(columns={nome: COLUNAS_EXPORTACAO[nome] for nome in colunas})
 
     return df
 

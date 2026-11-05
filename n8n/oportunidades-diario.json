@@ -1,0 +1,115 @@
+{
+  "name": "Oportunidades PNCP diario",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "agenda",
+      "name": "Todo dia 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/oportunidades",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "uf", "value": "RS"},
+            {"name": "classificar", "value": "true"},
+            {"name": "relevancia_minima", "value": "7"},
+            {"name": "palavras", "value": "computador"},
+            {"name": "palavras", "value": "notebook"}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{$credentials.httpHeaderAuth.value}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "http",
+      "name": "GET oportunidades",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "notes": "Configure a credencial Header Auth com o nome X-API-Key e o valor de API_KEY_OPORTUNIDADES. Não cole a chave neste JSON."
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "itens",
+        "options": {}
+      },
+      "id": "split",
+      "name": "Separar itens",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.relevancia}}",
+              "operation": "largerEqual",
+              "value2": 7
+            }
+          ]
+        }
+      },
+      "id": "if",
+      "name": "Relevancia >= 7",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Alerta\nConfigure aqui Gmail ou Telegram.\nUse `resumo_ia`, `objeto` e `link_pncp` do item.\nA API já filtrou por relevancia_minima; este IF reforça o critério.",
+        "height": 240,
+        "width": 320
+      },
+      "id": "nota",
+      "name": "Configurar alerta",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1200, 200]
+    }
+  ],
+  "connections": {
+    "Todo dia 8h": {
+      "main": [[{"node": "GET oportunidades", "type": "main", "index": 0}]]
+    },
+    "GET oportunidades": {
+      "main": [[{"node": "Separar itens", "type": "main", "index": 0}]]
+    },
+    "Separar itens": {
+      "main": [[{"node": "Relevancia >= 7", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
