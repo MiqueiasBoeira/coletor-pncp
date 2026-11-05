@@ -11,6 +11,22 @@ class ErroExportacao(Exception):
     """Falha ao gerar a planilha de licitações"""
 
 
+COLUNAS_OPCIONAIS = frozenset(
+    {
+        "relevancia",
+        "categoria",
+        "resumo_ia",
+        "justificativa",
+        "qtd_itens_interesse",
+        "valor_itens_interesse",
+        "recomendar",
+        "nota_recomendacao",
+        "resumo_oportunidade",
+        "riscos",
+        "proximos_passos",
+    }
+)
+
 COLUNAS_EXPORTACAO: dict[str, str] = {
     "numero_controle_pncp": "Número de Controle do PNCP",
     "orgao": "Órgão",
@@ -21,21 +37,25 @@ COLUNAS_EXPORTACAO: dict[str, str] = {
     "valor_estimado": "Valor estimado",
     "data_publicacao_pncp": "Data de publicação no PNCP",
     "link_pncp": "Link do PNCP",
+    "qtd_itens_interesse": "Itens de interesse",
+    "valor_itens_interesse": "Valor itens interesse",
     "relevancia": "Relevância",
     "categoria": "Categoria",
     "resumo_ia": "Resumo",
     "justificativa": "Justificativa",
+    "recomendar": "Recomendar",
+    "nota_recomendacao": "Nota recomendação",
+    "resumo_oportunidade": "Resumo oportunidade",
+    "riscos": "Riscos",
+    "proximos_passos": "Próximos passos",
 }
 
 
 def _colunas_presentes(licitacoes: list[dict[str, Any]]) -> list[str]:
     if not licitacoes:
-        return [nome for nome in COLUNAS_EXPORTACAO if nome not in {
-            "relevancia",
-            "categoria",
-            "resumo_ia",
-            "justificativa",
-        }]
+        return [
+            nome for nome in COLUNAS_EXPORTACAO if nome not in COLUNAS_OPCIONAIS
+        ]
     chaves = set(licitacoes[0])
     return [nome for nome in COLUNAS_EXPORTACAO if nome in chaves]
 

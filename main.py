@@ -12,6 +12,7 @@ from classificador import ErroClassificacao
 from exportacao import ErroExportacao, exportar_para_excel
 from manipular_google_sheets import ErroGoogleSheets, exporta_grava_licitacoes_sheets
 from pipeline import CACHE_CLASSIFICACAO, processar_registros
+from recomendador import CACHE_RECOMENDACAO, ErroRecomendacao
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +57,27 @@ def executar(
     classificar: bool = False,
     cliente_classificador: Any | None = None,
     caminho_cache: Path | None = CACHE_CLASSIFICACAO,
+    enriquecer_itens: bool = False,
+    enriquecer_docs: bool = False,
+    aplicar_funil_flag: bool = False,
+    recomendar: bool = False,
+    cliente_recomendador: Any | None = None,
+    caminho_cache_recomendacao: Path | None = CACHE_RECOMENDACAO,
 ) -> tuple[list[dict], list[dict]]:
-    validadas, erros, _contagem = processar_registros(
+    validadas, erros, _contagem, _contagem_rec = processar_registros(
         licitacoes,
         palavras_chave,
         classificar=classificar,
         cliente_classificador=cliente_classificador,
         caminho_cache=caminho_cache if classificar else None,
+        enriquecer_itens=enriquecer_itens,
+        enriquecer_docs=enriquecer_docs,
+        aplicar_funil_flag=aplicar_funil_flag,
+        recomendar=recomendar,
+        cliente_recomendador=cliente_recomendador,
+        caminho_cache_recomendacao=(
+            caminho_cache_recomendacao if recomendar else None
+        ),
     )
     exportar_para_excel(validadas, caminho_excel)
     if gravar_sheets:
@@ -112,6 +127,26 @@ def construir_argumentos(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Classifica cada objeto com a Anthropic (ANTHROPIC_API_KEY no .env).",
     )
+    parser.add_argument(
+        "--enriquecer-itens",
+        action="store_true",
+        help="Consulta itens da contratação (API PNCP 11.13).",
+    )
+    parser.add_argument(
+        "--enriquecer-docs",
+        action="store_true",
+        help="Baixa Edital/TR e extrai texto (API PNCP 11.8).",
+    )
+    parser.add_argument(
+        "--funil",
+        action="store_true",
+        help="Aplica funil determinístico (criterios.yaml); implica itens.",
+    )
+    parser.add_argument(
+        "--recomendar",
+        action="store_true",
+        help="Recomendação LLM nos sobreviventes; implica docs+funil+itens.",
+    )
     return parser.parse_args(argv)
 
 
@@ -130,11 +165,16 @@ def main(argv: list[str] | None = None) -> int:
             argumentos.saida,
             gravar_sheets=argumentos.sheets,
             classificar=argumentos.classificar,
+            enriquecer_itens=argumentos.enriquecer_itens,
+            enriquecer_docs=argumentos.enriquecer_docs,
+            aplicar_funil_flag=argumentos.funil,
+            recomendar=argumentos.recomendar,
         )
     except (
         ErroLeituraArquivoLicitacoesJSON,
         ErroConsultaPNCP,
         ErroClassificacao,
+        ErroRecomendacao,
     ) as erro:
         logger.error("%s", erro)
         return 1

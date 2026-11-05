@@ -1,6 +1,6 @@
 # Monitor de licitações do PNCP
 
-Busca contratações no [Portal Nacional de Contratações Públicas](https://pncp.gov.br), filtra por palavra-chave no objeto e exporta para Excel. Opcionalmente classifica cada objeto com a Anthropic (relevância, categoria, resumo) e serve o resultado numa API para o n8n agendar alertas.
+Busca contratações no [Portal Nacional de Contratações Públicas](https://pncp.gov.br), filtra por palavra-chave no objeto e exporta para Excel. Opcionalmente enriquece com itens e editais, aplica um funil determinístico (`criterios.yaml`) e só então recomenda com a Anthropic — além da classificação curta do objeto e da API para o n8n.
 
 ## Início rápido
 
@@ -43,16 +43,21 @@ Datas no formato `AAAAMMDD`. Modalidade `6` = Pregão Eletrônico.
 # PNCP (um intervalo pequeno demora menos)
 uv run python main.py --data-inicial 20261103 --data-final 20261103 --uf RS --palavras aquisição --saida pasta_de_exportacao/pncp.xlsx
 
-# Com classificação (gasta tokens)
+# Com classificação do objeto (gasta tokens)
 uv run python main.py --arquivo local/publicacaoPNCP.json --palavras computador --classificar --saida pasta_de_exportacao/com_ia.xlsx
+
+# Funil completo: itens → docs → critérios → recomendação LLM (só nos sobreviventes)
+uv run python main.py --arquivo local/publicacaoPNCP.json --palavras computador --recomendar --saida pasta_de_exportacao/funil.xlsx
 
 # Também Google Sheets (substitui a primeira aba: clear + rewrite)
 uv run python main.py --data-inicial 20261103 --data-final 20261103 --uf RS --sheets
 ```
 
+Flags do funil (opt-in): `--enriquecer-itens`, `--enriquecer-docs`, `--funil`, `--recomendar`. `--funil` implica itens; `--recomendar` implica docs+funil+itens. Critérios em [`criterios.yaml`](criterios.yaml).
+
 Entre páginas da API pública o programa espera 1 segundo.
 
-Códigos de saída: `0` ok (lista vazia também); `1` leitura/PNCP/classificação; `2` falha ao gravar Excel/Sheets.
+Códigos de saída: `0` ok (lista vazia também); `1` leitura/PNCP/classificação/recomendação; `2` falha ao gravar Excel/Sheets.
 
 ## API HTTP e n8n
 
@@ -66,7 +71,7 @@ uv run uvicorn api:app --reload --host 0.0.0.0 --port 8000
 | `GET /saude` | não | `{"status":"ok"}` |
 | `GET /oportunidades` | header `X-API-Key` = `API_KEY_OPORTUNIDADES` | `itens`, e `tokens` se classificou |
 
-Query: `uf`, `data_inicial`, `data_final`, `palavras`, `classificar`, `relevancia_minima` (padrão 7), `arquivo` (JSON local, só desenvolvimento).
+Query: `uf`, `data_inicial`, `data_final`, `palavras`, `classificar`, `relevancia_minima` (padrão 7), `enriquecer_itens`, `enriquecer_docs`, `funil`, `recomendar`, `arquivo` (JSON local, só desenvolvimento).
 
 Passo a passo do workflow: [`n8n/README.md`](n8n/README.md). Arquivo para importar: [`n8n/oportunidades-diario.json`](n8n/oportunidades-diario.json).
 
@@ -95,19 +100,23 @@ RUN_AVALIACAO=1 uv run pytest -m avaliacao -q
 
 1. Fonte: JSON (`--arquivo`) ou API do PNCP.
 2. Filtro por palavra no objeto.
-3. Validação / transformação dos campos.
-4. Com `--classificar`: Anthropic (tool use) + cache por número de controle.
-5. Excel (e Sheets, se pedido) a partir da mesma tabela.
+3. Validação / transformação (inclui CNPJ, ano e sequencial para o detalhe).
+4. Opcional: itens (11.13) → documentos/Edital (11.8 + `pypdf`) → funil determinístico → recomendação LLM só nos aprovados.
+5. Com `--classificar`: Anthropic no objeto (tool use) + cache por número de controle.
+6. Excel (e Sheets, se pedido) a partir da mesma tabela.
+
+Caches em `local/` (classificação, recomendação, PDFs). A LLM de recomendação **não** roda no lote inteiro — só no refinador após o funil.
 
 ## Limitações
 
-O município é o da unidade compradora (`unidadeOrgao.municipioNome`), não necessariamente o município de entrega. Este programa não lê edital em PDF.
+O município é o da unidade compradora (`unidadeOrgao.municipioNome`), não necessariamente o município de entrega. PDF só com texto embutido (`pypdf`); sem OCR.
 
 ## Decisões
 
 - [Uma tabela, dois destinos](docs/decisoes/001-tabela-unica.md)
 - [Lista vazia e página que falha](docs/decisoes/002-falhas.md)
 - [Classificação com LLM e cache](docs/decisoes/003-classificacao-llm.md)
+- [Funil de itens, documentos e recomendação](docs/decisoes/004-funil-documentos.md)
 
 ## Outros projetos
 

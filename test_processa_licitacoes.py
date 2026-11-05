@@ -51,7 +51,9 @@ def test_palavras_vazias_nao_deixam_passar_tudo() -> None:
 
 
 def test_transformar_monta_link_e_campos() -> None:
-    resultado = transformar_licitacao(registro())
+    resultado = transformar_licitacao(
+        registro(dataAberturaProposta="2026-11-20T10:00:00")
+    )
 
     assert resultado["link_pncp"] == (
         "https://pncp.gov.br/app/editais/87613071000148/2026/413"
@@ -59,6 +61,10 @@ def test_transformar_monta_link_e_campos() -> None:
     assert resultado["orgao"] == "PREFEITURA MUNICIPAL DE SANTO ÂNGELO"
     assert resultado["municipio"] == "Santo Ângelo"
     assert resultado["valor_estimado"] == 3795370.0
+    assert resultado["orgao_cnpj"] == "87613071000148"
+    assert resultado["ano_compra"] == 2026
+    assert resultado["sequencial_compra"] == 413
+    assert resultado["data_abertura_proposta"] == "2026-11-20T10:00:00"
 
 
 def test_registro_incompleto_vai_para_erros_e_o_valido_passa() -> None:

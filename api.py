@@ -24,6 +24,7 @@ from main import (
     carregar_arquivo_publicacao_pncp,
 )
 from pipeline import CACHE_CLASSIFICACAO, processar_registros
+from recomendador import CACHE_RECOMENDACAO, ErroRecomendacao
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,8 @@ def criar_app(
     *,
     cliente_classificador: Any | None = None,
     caminho_cache: Path | None = CACHE_CLASSIFICACAO,
+    cliente_recomendador: Any | None = None,
+    caminho_cache_recomendacao: Path | None = CACHE_RECOMENDACAO,
 ) -> FastAPI:
     app = FastAPI(
         title="Oportunidades PNCP",
@@ -68,6 +71,10 @@ def criar_app(
         palavras: list[str] | None = Query(default=None),
         classificar: bool = Query(default=True),
         relevancia_minima: int = Query(default=7, ge=0, le=10),
+        enriquecer_itens: bool = Query(default=False),
+        enriquecer_docs: bool = Query(default=False),
+        funil: bool = Query(default=False),
+        recomendar: bool = Query(default=False),
         arquivo: str | None = Query(
             default=None,
             description="Caminho local de JSON (só para desenvolvimento).",
@@ -86,19 +93,27 @@ def criar_app(
                     uf,
                     tamanho_pagina,
                 )
-            itens, _erros, contagem = processar_registros(
+            itens, _erros, contagem, contagem_rec = processar_registros(
                 registros,
                 lista_palavras,
                 classificar=classificar,
                 cliente_classificador=cliente_classificador,
                 caminho_cache=caminho_cache if classificar else None,
                 relevancia_minima=relevancia_minima if classificar else None,
+                enriquecer_itens=enriquecer_itens,
+                enriquecer_docs=enriquecer_docs,
+                aplicar_funil_flag=funil,
+                recomendar=recomendar,
+                cliente_recomendador=cliente_recomendador,
+                caminho_cache_recomendacao=(
+                    caminho_cache_recomendacao if recomendar else None
+                ),
             )
         except ErroLeituraArquivoLicitacoesJSON as erro:
             raise HTTPException(status_code=400, detail=str(erro)) from erro
         except ErroConsultaPNCP as erro:
             raise HTTPException(status_code=502, detail=str(erro)) from erro
-        except ErroClassificacao as erro:
+        except (ErroClassificacao, ErroRecomendacao) as erro:
             raise HTTPException(status_code=502, detail=str(erro)) from erro
 
         corpo: dict[str, Any] = {
@@ -111,6 +126,13 @@ def criar_app(
                 "output_tokens": contagem.output_tokens,
                 "chamadas": contagem.chamadas,
                 "acertos_cache": contagem.acertos_cache,
+            }
+        if contagem_rec is not None:
+            corpo["tokens_recomendacao"] = {
+                "input_tokens": contagem_rec.input_tokens,
+                "output_tokens": contagem_rec.output_tokens,
+                "chamadas": contagem_rec.chamadas,
+                "acertos_cache": contagem_rec.acertos_cache,
             }
         return JSONResponse(corpo)
 

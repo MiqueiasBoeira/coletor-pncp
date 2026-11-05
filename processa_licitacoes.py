@@ -22,9 +22,13 @@ def transformar_licitacao(licitacao: dict) -> dict:
         data_publicacao_pncp = licitacao["dataPublicacaoPncp"]
 
         link_pncp = f"https://pncp.gov.br/app/editais/{cnpj}/{ano}/{sequencial}"
+        data_abertura_proposta = licitacao.get("dataAberturaProposta")
 
         return {
             "numero_controle_pncp": numero_controle_pncp,
+            "orgao_cnpj": cnpj,
+            "ano_compra": ano,
+            "sequencial_compra": sequencial,
             "orgao": orgao,
             "uf": uf,
             "municipio": municipio,
@@ -32,6 +36,7 @@ def transformar_licitacao(licitacao: dict) -> dict:
             "objeto": objeto,
             "valor_estimado": valor_estimado,
             "data_publicacao_pncp": data_publicacao_pncp,
+            "data_abertura_proposta": data_abertura_proposta,
             "link_pncp": link_pncp,
         }
 

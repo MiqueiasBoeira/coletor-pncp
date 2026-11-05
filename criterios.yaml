@@ -1,0 +1,42 @@
+# Critérios do funil PNCP (itens → documentos → recomendação).
+# Ajuste as listas sem mudar código.
+
+itens:
+  palavras:
+    - computador
+    - notebook
+    - laptop
+    - desktop
+    - monitor
+    - mouse
+    - teclado
+    - impressora
+    - periférico
+    - perifericos
+
+valor:
+  min: 0
+  max: 5000000
+
+prazo:
+  dias_minimos_ate_abertura: 1
+
+edital:
+  termos_obrigatorios: []
+  termos_bloqueadores:
+    - exclusividade
+    - marca exclusiva
+
+docs:
+  tipos_prioritarios:
+    edital_id: 2
+    titulos_tr:
+      - termo de referência
+      - termo de referencia
+      - especificação
+      - especificacao
+
+perfil_usuario: >
+  Fornecedor de hardware e TI (computadores, notebooks, monitores
+  e periféricos) interessado em pregões eletrônicos no RS, com
+  foco em registro de preços e aquisições para órgãos públicos.
