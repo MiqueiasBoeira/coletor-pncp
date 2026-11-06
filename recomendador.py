@@ -29,6 +29,7 @@ ESQUEMA_FERRAMENTA = {
     "description": "Registra a recomendação da oportunidade.",
     "input_schema": {
         "type": "object",
+        "additionalProperties": False,
         "properties": {
             "recomendar": {
                 "type": "boolean",
@@ -38,9 +39,18 @@ ESQUEMA_FERRAMENTA = {
                 "type": "integer",
                 "description": "Nota de 0 a 10",
             },
-            "resumo_oportunidade": {"type": "string"},
-            "riscos": {"type": "string"},
-            "proximos_passos": {"type": "string"},
+            "resumo_oportunidade": {
+                "type": "string",
+                "description": "Uma frase objetiva sobre a oportunidade",
+            },
+            "riscos": {
+                "type": "string",
+                "description": "Uma frase com os principais riscos",
+            },
+            "proximos_passos": {
+                "type": "string",
+                "description": "Uma frase com a próxima ação recomendada",
+            },
         },
         "required": [
             "recomendar",
@@ -50,6 +60,24 @@ ESQUEMA_FERRAMENTA = {
             "proximos_passos",
         ],
     },
+}
+
+_ALIASES_CAMPO: dict[str, tuple[str, ...]] = {
+    "recomendar": ("recomendar", "recommend"),
+    "nota": ("nota", "score", "relevancia"),
+    "resumo_oportunidade": (
+        "resumo_oportunidade",
+        "resumo",
+        "resumoOportunidade",
+    ),
+    "riscos": ("riscos", "risco"),
+    "proximos_passos": (
+        "proximos_passos",
+        "proximosPassos",
+        "próximos_passos",
+        "proximos passos",
+        "next_steps",
+    ),
 }
 
 
@@ -113,15 +141,29 @@ def _extrair_entrada_ferramenta(resposta: Any) -> dict[str, Any]:
     raise ErroRecomendacao("A resposta do modelo não usou a ferramenta esperada")
 
 
+def _campo(entrada: dict[str, Any], nome: str) -> Any:
+    for alias in _ALIASES_CAMPO.get(nome, (nome,)):
+        if alias in entrada:
+            return entrada[alias]
+    raise KeyError(nome)
+
+
 def _montar_recomendacao(entrada: dict[str, Any], resposta: Any) -> Recomendacao:
     try:
-        recomendar = bool(entrada["recomendar"])
-        nota = int(entrada["nota"])
-        resumo = str(entrada["resumo_oportunidade"]).strip()
-        riscos = str(entrada["riscos"]).strip()
-        passos = str(entrada["proximos_passos"]).strip()
+        recomendar = bool(_campo(entrada, "recomendar"))
+        nota = int(_campo(entrada, "nota"))
+        resumo = str(_campo(entrada, "resumo_oportunidade")).strip()
+        riscos = str(_campo(entrada, "riscos")).strip()
+        passos = str(_campo(entrada, "proximos_passos")).strip()
     except (KeyError, TypeError, ValueError) as erro:
-        raise ErroRecomendacao(f"Campos inválidos na recomendação: {erro}") from erro
+        logger.warning(
+            "Entrada inválida da ferramenta (chaves=%s): %s",
+            sorted(entrada.keys()),
+            erro,
+        )
+        raise ErroRecomendacao(
+            f"Campos inválidos na recomendação: {erro} (chaves={sorted(entrada.keys())})"
+        ) from erro
     if not 0 <= nota <= 10:
         raise ErroRecomendacao(f"nota fora de 0..10: {nota}")
     if not resumo or not riscos or not passos:
@@ -153,7 +195,7 @@ def recomendar_licitacao(
     try:
         resposta = criar(
             model=nome_modelo,
-            max_tokens=500,
+            max_tokens=1024,
             system=_prompt_sistema(perfil),
             tools=[ESQUEMA_FERRAMENTA],
             tool_choice={"type": "tool", "name": FERRAMENTA},

@@ -1,7 +1,11 @@
 from pathlib import Path
 from types import SimpleNamespace
 
-from recomendador import recomendar_licitacao, recomendar_licitacoes
+from recomendador import (
+    _montar_recomendacao,
+    recomendar_licitacao,
+    recomendar_licitacoes,
+)
 
 
 class BlocoFerramenta:
@@ -33,6 +37,22 @@ class ClienteFalso:
                 "proximos_passos": "Ler TR e montar proposta.",
             }
         )
+
+
+def test_montar_aceita_alias_de_proximos_passos() -> None:
+    resposta = RespostaFalsa({})
+    resultado = _montar_recomendacao(
+        {
+            "recomendar": False,
+            "nota": 3,
+            "resumo_oportunidade": "Fora do perfil.",
+            "riscos": "Objeto residual.",
+            "proximosPassos": "Ignorar e seguir.",
+        },
+        resposta,
+    )
+    assert resultado.proximos_passos == "Ignorar e seguir."
+    assert resultado.recomendar is False
 
 
 def test_recomendar_usa_tool_use() -> None:

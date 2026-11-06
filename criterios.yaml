@@ -19,7 +19,7 @@ valor:
   max: 5000000
 
 prazo:
-  dias_minimos_ate_abertura: 1
+  dias_minimos_ate_abertura: 0
 
 edital:
   termos_obrigatorios: []
